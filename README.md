@@ -1,11 +1,29 @@
-Steps to run the system monitor:
+Terminal System Monitor (Textual + Rich + psutil)
 
-1. create an environment:
-   1. python3 -m venv venv           
-   2. source venv/bin/activate
+A terminal-based real-time system monitor built using Python, Textual, Rich, and psutil. Features structured telemetry, interactive process sorting, and time-series CPU visualization.
 
-3. install the dependencies:
-   pip install psutil, rich, textual
-   
-4. run app.py
-this should open a h-top like interface showing info about your cpu, memory and running processes.
+Features: 
+   1. CPU (total + per-core + sparkline)
+   2. Load average
+   3. Memory + swap
+   4. Disk usage
+   5. Network throughput
+   6. Interactive process sorting
+   7. Real-time refresh loop
+
+Architecture: 
+   monitor.py → telemetry engine
+   app.py     → reactive UI layer
+
+Tech Stack: 
+   Python 3.x
+   psutil
+   textual
+   rich
+
+Future Improvements: 
+   Process filtering
+   Kill process feature
+   Network history
+   Configurable refresh rate
+   Theming

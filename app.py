@@ -1,4 +1,4 @@
-# app.py
+# app.py - system monitor app (frontend)
 
 import psutil
 import platform
@@ -16,6 +16,8 @@ from monitor import SystemMonitor
 from collections import deque
 from rich.console import Group
 
+from rich.align import Align
+from rich.text import Text
 
 
 class SystemMonitorApp(App):
@@ -54,8 +56,8 @@ class SystemMonitorApp(App):
                 Static("", id="disk"),
             ),
             Static("", id="processes"),
+            Static("", id="footer"),
         )
-
 
     async def on_mount(self):
         self.set_interval(1, self.refresh_data)
@@ -72,6 +74,14 @@ class SystemMonitorApp(App):
         snapshot = self.monitor.snapshot()
         self.cpu_history.append(snapshot.cpu.total_percent)
 
+        def get_color(percent):
+            if percent < 50:
+                return "green"
+            elif percent < 80:
+                return "yellow"
+            else:
+                return "red"
+
         # ---------- Header ----------
         uptime = int(snapshot.system.uptime_seconds)
         hours = uptime // 3600
@@ -79,22 +89,22 @@ class SystemMonitorApp(App):
 
         load1, load5, load15 = snapshot.system.load_avg
 
-        header_text = (
-        f"{platform.system()} | "
-        f"Uptime: {hours}h {minutes}m | "
-        f"Load: {load1:.2f} {load5:.2f} {load15:.2f} | "
-        f"Sort: {self.sort_mode.upper()}"
-    )
+        header_content = Text(
+            f"{platform.system()} | "
+            f"Uptime: {hours}h {minutes}m | "
+            f"Load: {load1:.2f} {load5:.2f} {load15:.2f} | "
+            f"Sort: {self.sort_mode.upper()}",
+            style="bold"
+        )
 
-
-        self.query_one("#header").update(header_text)
+        self.query_one("#header").update(Align.center(header_content))
 
         # ---------- CPU ----------
         self.cpu_history.append(snapshot.cpu.total_percent)
 
         cpu_progress = Progress(
             TextColumn("{task.description}"),
-            BarColumn(bar_width=20),
+            BarColumn(bar_width=20, complete_style=get_color(snapshot.cpu.total_percent)),
             TextColumn("{task.percentage:>5.1f}%"),
         )
 
@@ -132,7 +142,10 @@ class SystemMonitorApp(App):
 
         mem_progress = Progress(
             TextColumn("{task.description}"),
-            BarColumn(bar_width=20),
+            BarColumn(
+                bar_width=20,
+                complete_style=get_color(mem.percent)
+            ),
             TextColumn("{task.percentage:>5.1f}%"),
         )
 
@@ -179,7 +192,10 @@ class SystemMonitorApp(App):
 
         disk_progress = Progress(
             TextColumn("{task.description}"),
-            BarColumn(bar_width=20),
+            BarColumn(
+                bar_width=20,
+                complete_style=get_color(disk.percent)
+            ),
             TextColumn("{task.percentage:>5.1f}%"),
         )
 
@@ -225,6 +241,9 @@ class SystemMonitorApp(App):
             Panel(table, title="Top Processes")
         )
 
+        # ---------- Footer ----------
+        footer_text = "m: Sort by Memory   c: Sort by CPU   Esc: Quit"
+        self.query_one("#footer").update(footer_text)
 
 if __name__ == "__main__":
     SystemMonitorApp().run()
