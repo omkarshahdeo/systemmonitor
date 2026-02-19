@@ -1,4 +1,4 @@
-# app.py - system monitor app (frontend)
+# app.py - terminal frontend
 
 import psutil
 import platform

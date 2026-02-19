@@ -1,4 +1,4 @@
-# monitor.py - overall system monitor (backend)
+# monitor.py - telemetry engine
 import psutil
 import time
 from dataclasses import dataclass

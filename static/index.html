@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Monitor</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: #eee;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: #1c1c1c;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .bar {
+            height: 18px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        canvas {
+            margin-top: 15px;
+            background: #1c1c1c;
+        }
+
+        .metric {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Live System Monitor</h1>
+
+<div class="grid">
+
+    <div class="card">
+        <h3>CPU Usage</h3>
+        <div class="bar">
+            <div id="cpuBar" class="bar-fill"></div>
+        </div>
+        <canvas id="cpuChart" width="400" height="100"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Memory Usage</h3>
+        <div class="bar">
+            <div id="memoryBar" class="bar-fill"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Network</h3>
+        <div class="metric">Upload: <span id="upload"></span></div>
+        <div class="metric">Download: <span id="download"></span></div>
+    </div>
+
+    <div class="card">
+        <h3>Load Average</h3>
+        <div class="metric" id="load"></div>
+    </div>
+
+</div>
+
+<script>
+    const ws = new WebSocket("ws://" + location.host + "/ws");
+
+    const cpuBar = document.getElementById("cpuBar");
+    const memoryBar = document.getElementById("memoryBar");
+    const uploadEl = document.getElementById("upload");
+    const downloadEl = document.getElementById("download");
+    const loadEl = document.getElementById("load");
+
+    const canvas = document.getElementById("cpuChart");
+    const ctx = canvas.getContext("2d");
+
+    let cpuHistory = [];
+
+    function getColor(value) {
+        if (value < 50) return "lime";
+        if (value < 80) return "orange";
+        return "red";
+    }
+
+    function drawChart() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "lime";
+        ctx.beginPath();
+
+        cpuHistory.forEach((value, index) => {
+            const x = (index / 60) * canvas.width;
+            const y = canvas.height - (value / 100) * canvas.height;
+
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+
+        ctx.stroke();
+    }
+
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        cpuBar.style.width = data.cpu + "%";
+        cpuBar.style.background = getColor(data.cpu);
+
+        memoryBar.style.width = data.memory + "%";
+        memoryBar.style.background = getColor(data.memory);
+
+        uploadEl.innerText = (data.upload / 1024).toFixed(1) + " KB/s";
+        downloadEl.innerText = (data.download / 1024).toFixed(1) + " KB/s";
+
+        loadEl.innerText = data.load.map(v => v.toFixed(2)).join(" | ");
+
+        cpuHistory.push(data.cpu);
+        if (cpuHistory.length > 60) cpuHistory.shift();
+
+        drawChart();
+    };
+</script>
+
+</body>
+</html>
