@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Monitor</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: #eee;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: #1c1c1c;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .bar {
+            height: 18px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: lime;
+            transition: width 0.5s;
+        }
+
+        canvas {
+            margin-top: 15px;
+            background: #1c1c1c;
+        }
+
+        .metric {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Live System Monitor</h1>
+
+<div id="timestamp"></div>
+
+<div class="grid">
+
+    <div class="card">
+        <h3>CPU Usage</h3>
+        <div class="bar">
+            <div id="cpuBar" class="bar-fill"></div>
+        </div>
+        <canvas id="cpuChart" width="400" height="100"></canvas>
+    </div>
+    <div class="metric">CPU: <span id="cpuValue"></span>%</div>
+
+
+    <div class="card">
+        <h3>Memory Usage</h3>
+        <div class="bar">
+            <div id="memoryBar" class="bar-fill"></div>
+        </div>
+    </div>
+    <div class="metric">Memory: <span id="memoryValue"></span>%</div>
+
+
+    <div class="card">
+        <h3>Network</h3>
+        <div class="metric">Upload: <span id="upload"></span></div>
+        <div class="metric">Download: <span id="download"></span></div>
+    </div>
+
+    <div class="card">
+        <h3>Load Average</h3>
+        <div class="metric" id="load"></div>
+    </div>
+
+</div>
+
+<div id="status">Connecting...</div>
+
+<script>
+    const MAX_POINTS = 300;
+    const timestampEl = document.getElementById("timestamp");
+    const ws = new WebSocket("ws://" + location.host + "/ws");
+
+    const cpuBar = document.getElementById("cpuBar");
+    const memoryBar = document.getElementById("memoryBar");
+    const uploadEl = document.getElementById("upload");
+    const downloadEl = document.getElementById("download");
+    const loadEl = document.getElementById("load");
+
+    const canvas = document.getElementById("cpuChart");
+    const ctx = canvas.getContext("2d");
+
+    const cpuValue = document.getElementById("cpuValue");
+    const memoryValue = document.getElementById("memoryValue");
+
+    let cpuHistory = [];
+
+    function getColor(value) {
+        if (value < 50) return "lime";
+        if (value < 80) return "orange";
+        return "red";
+    }
+
+    function drawChart() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Grid lines
+        ctx.strokeStyle = "#333";
+        for (let i = 0; i <= 5; i++) {
+            const y = (i / 5) * canvas.height;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+
+        // CPU line
+        ctx.strokeStyle = "lime";
+        ctx.beginPath();
+
+        cpuHistory.forEach((value, index) => {
+            const x = (index / MAX_POINTS) * canvas.width;
+            const y = canvas.height - (value / 100) * canvas.height;
+
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+
+        ctx.stroke();
+    }
+
+
+    async function loadHistory() {
+        const response = await fetch("/history");
+        const data = await response.json();
+        
+        cpuHistory = data.map(entry => entry.cpu.total);
+        drawChart();
+    }
+    
+    loadHistory();
+    
+    // ws.onmessage = function(event) {
+    //     console.log("RAW:", event.data);
+    // };
+
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log("PARSED:", data);
+
+        cpuBar.style.width = data.cpu.total + "%";
+        memoryBar.style.width = data.memory.percent + "%";
+
+        cpuValue.innerText = data.cpu.total.toFixed(1);
+        memoryValue.innerText = data.memory.percent.toFixed(1);
+
+        cpuHistory.push(data.cpu.total);
+        if (cpuHistory.length > 60) cpuHistory.shift();
+
+        drawChart();
+        cpuBar.style.background = "red";
+        memoryBar.style.background = "blue";
+
+        uploadEl.innerText = (data.network.upload / 1024).toFixed(1) + " KB/s";
+        downloadEl.innerText = (data.network.download / 1024).toFixed(1) + " KB/s";
+        loadEl.innerText = data.load.map(v => v.toFixed(2)).join(" | ");
+        timestampEl.innerText = "Last update: " + new Date(data.timestamp * 1000).toLocaleTimeString();
+
+    };
+
+    const statusEl = document.getElementById("status");
+
+    ws.onopen = function() {
+        statusEl.innerText = "Connected";
+        statusEl.style.color = "lime";
+    };
+
+    ws.onclose = function() {
+        statusEl.innerText = "Disconnected";
+        statusEl.style.color = "red";
+    };
+
+</script>
+
+</body>
+</html>
