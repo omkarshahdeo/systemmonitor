@@ -14,7 +14,6 @@ from rich.progress import Progress, BarColumn, TextColumn
 
 from systemmonitor.monitor import SystemMonitor
 from collections import deque
-from rich.console import Group
 
 from rich.align import Align
 from rich.text import Text
@@ -100,8 +99,6 @@ class SystemMonitorApp(App):
         self.query_one("#header").update(Align.center(header_content))
 
         # ---------- CPU ----------
-        self.cpu_history.append(snapshot.cpu.total_percent)
-
         cpu_progress = Progress(
             TextColumn("{task.description}"),
             BarColumn(bar_width=20, complete_style=get_color(snapshot.cpu.total_percent)),

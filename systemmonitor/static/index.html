@@ -113,12 +113,6 @@
 
     let cpuHistory = [];
 
-    function getColor(value) {
-        if (value < 50) return "lime";
-        if (value < 80) return "orange";
-        return "red";
-    }
-
     function drawChart() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -157,14 +151,9 @@
     }
     
     loadHistory();
-    
-    // ws.onmessage = function(event) {
-    //     console.log("RAW:", event.data);
-    // };
 
     ws.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        console.log("PARSED:", data);
 
         cpuBar.style.width = data.cpu.total + "%";
         memoryBar.style.width = data.memory.percent + "%";
@@ -173,11 +162,11 @@
         memoryValue.innerText = data.memory.percent.toFixed(1);
 
         cpuHistory.push(data.cpu.total);
-        if (cpuHistory.length > 60) cpuHistory.shift();
+        if (cpuHistory.length > MAX_POINTS) cpuHistory.shift();
 
         drawChart();
-        cpuBar.style.background = "red";
-        memoryBar.style.background = "blue";
+        cpuBar.style.background = data.cpu.total < 50 ? "lime" : (data.cpu.total < 80 ? "orange" : "red");
+        memoryBar.style.background = data.memory.percent < 50 ? "lime" : (data.memory.percent < 80 ? "orange" : "red");
 
         uploadEl.innerText = (data.network.upload / 1024).toFixed(1) + " KB/s";
         downloadEl.innerText = (data.network.download / 1024).toFixed(1) + " KB/s";
