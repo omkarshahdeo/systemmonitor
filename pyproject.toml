@@ -1,0 +1,12 @@
+[project]
+name = "systemmonitor"
+version = "0.1.0"
+description = "Lightweight real-time system monitor"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "psutil"
+]
+
+[project.scripts]
+systemmonitor = "systemmonitor.cli:main"
